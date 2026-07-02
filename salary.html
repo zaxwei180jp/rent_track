@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>租屋費用</title>
+<title>薪資</title>
 <style>
 :root{
   --bg:#EBE8E1;
@@ -14,11 +14,12 @@
   --accent:#7E96A0;
   --accent-ink:#F6F8F8;
   --danger:#B4776C;
-  --c-elec:#C8A15A;
-  --c-water:#7E96A0;
-  --c-gas:#C0826C;
-  --c-mobile:#9C8BA5;
-  --c-oil:#A4B08B;
+  --ok:#7C9473;
+  --c-base:#7E96A0;
+  --c-attend:#A4B08B;
+  --c-ot:#C8A15A;
+  --c-commute:#9C8BA5;
+  --c-other:#C0826C;
   --radius:14px;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -87,10 +88,10 @@ body{
 /* category breakdown */
 .cat{display:flex;align-items:center;gap:10px;padding:6px 0}
 .cat .dot{width:10px;height:10px;border-radius:3px;flex:none}
-.cat .nm{font-size:.9rem;width:74px;flex:none}
+.cat .nm{font-size:.9rem;width:96px;flex:none}
 .cat .track{flex:1;height:8px;background:var(--bg);border-radius:99px;overflow:hidden}
 .cat .fill{height:100%;border-radius:99px}
-.cat .amt{font-size:.88rem;font-weight:600;width:82px;text-align:right;flex:none}
+.cat .amt{font-size:.88rem;font-weight:600;width:88px;text-align:right;flex:none}
 .cat .pct{font-size:.74rem;color:var(--muted);width:44px;text-align:right;flex:none}
 
 /* stacked bar chart */
@@ -125,9 +126,12 @@ body{
 .rec .body{border-top:1px solid var(--line);padding:11px 15px 13px}
 .drow{display:flex;align-items:baseline;gap:9px;padding:5px 0;font-size:.9rem}
 .drow .dot{width:9px;height:9px;border-radius:3px;flex:none;align-self:center}
-.drow .k{color:var(--muted);width:74px;flex:none}
+.drow .k{color:var(--muted);width:110px;flex:none}
 .drow .u{color:var(--muted);font-size:.76rem}
 .drow .v{margin-left:auto;font-weight:600}
+.drow.hr{border-top:1px dashed var(--line);margin-top:5px;padding-top:9px}
+.drow.take .k{color:var(--ink);font-weight:700}
+.drow.take .v{font-size:1.02rem;color:var(--ok)}
 .recbtns{display:flex;gap:8px;margin-top:11px}
 .sbtn{
   flex:1;height:36px;border-radius:10px;border:1px solid var(--line);
@@ -148,6 +152,7 @@ body{
 }
 @media(min-width:600px){.modal{border-radius:20px}}
 .modal h3{font-size:1.08rem;margin-bottom:16px}
+.mnote{font-size:.78rem;color:var(--muted);background:var(--bg);border-radius:10px;padding:9px 12px;margin-top:4px}
 .fgroup{margin-bottom:13px}
 .fgroup label{display:flex;align-items:center;gap:7px;font-size:.82rem;color:var(--muted);margin-bottom:6px}
 .fgroup label .dot{width:9px;height:9px;border-radius:3px}
@@ -162,7 +167,6 @@ body{
   background:var(--bg);color:var(--muted);font-size:.8rem;cursor:pointer;white-space:nowrap;
 }
 .brick:active{background:var(--line)}
-.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
 .mbtns{display:flex;gap:10px;margin-top:18px}
 .mbtns .cancel{
   flex:1;height:46px;border-radius:12px;border:1px solid var(--line);background:var(--bg);
@@ -194,13 +198,13 @@ body{
 <div class="wrap">
 
   <div class="ptabs">
-    <a class="ptab on" href="index.html">租屋費用</a>
+    <a class="ptab" href="index.html">租屋費用</a>
     <a class="ptab" href="tax.html">稅金</a>
-    <a class="ptab" href="salary.html">薪資</a>
+    <a class="ptab on" href="salary.html">薪資</a>
   </div>
 
   <div class="topbar">
-    <h1>租屋費用</h1>
+    <h1>薪資</h1>
     <span class="sub num" id="recCount"></span>
     <div class="actions">
       <button class="iconbtn" id="btnRefresh" title="重新整理">&#8635;</button>
@@ -214,12 +218,12 @@ body{
     <div class="stats" id="statCards"></div>
 
     <div class="card">
-      <h2>費用構成</h2>
+      <h2>支給構成</h2>
       <div id="catList"></div>
     </div>
 
     <div class="card">
-      <h2>每月合計</h2>
+      <h2>每月支給合計</h2>
       <div class="chartScroll"><div class="chart" id="chart"></div></div>
     </div>
   </div>
@@ -238,20 +242,15 @@ body{
     <h3 id="modalTitle">新增紀錄</h3>
 
     <div class="fgroup">
-      <label>名稱(年月)</label>
+      <label>月份</label>
       <div class="frow">
-        <input type="text" id="f_name" inputmode="numeric" placeholder="例:202607" maxlength="6">
+        <input type="text" id="f_name" inputmode="numeric" placeholder="例:202606" maxlength="6">
       </div>
     </div>
 
-    <div id="costFields"></div>
+    <div id="payFields"></div>
 
-    <div class="fgroup">
-      <label>燈油購買日期</label>
-      <div class="frow"><input type="date" id="f_date"></div>
-    </div>
-
-    <div class="fgrid" id="usageFields"></div>
+    <div class="mnote">儲存時會自動連結同月份的稅金紀錄;合計、扣除額、實拿薪水由 Notion 公式計算。</div>
 
     <div class="mbtns">
       <button class="cancel" id="btnCancel">取消</button>
@@ -263,21 +262,22 @@ body{
 <script>
 // ================= 設定 =================
 var API = '/api/notion';
-var CACHE_KEY = 'rent_cache_v1';
+var DB = 'salary';
+var CACHE_KEY = 'salary_cache_v1';
 var CACHE_TTL = 5 * 60 * 1000; // 5 分鐘
+var TITLE_PROP = '月份';
+var RELATION_PROP = '稅金';
 
-var COST_FIELDS = [
-  { key: '電費',     cssVar: '--c-elec'   },
-  { key: '水費',     cssVar: '--c-water'  },
-  { key: '瓦斯費',   cssVar: '--c-gas'    },
-  { key: '樂天通信', cssVar: '--c-mobile' },
-  { key: '燈油',     cssVar: '--c-oil'    }
+// 支給項目(合計 = 五項加總)
+// 「基本給予(月給)」的實際欄位名稱於載入時自動偵測(比對前綴),避免括號全半形差異
+var PAY_FIELDS = [
+  { key: '基本給予', prop: '基本給予(月給)', detectPrefix: '基本給予', cssVar: '--c-base',    label: '基本給予(月給)' },
+  { key: '全勤',     prop: '全勤',           cssVar: '--c-attend',  label: '全勤' },
+  { key: '加班',     prop: '加班',           cssVar: '--c-ot',      label: '加班' },
+  { key: '通勤',     prop: '通勤',           cssVar: '--c-commute', label: '通勤' },
+  { key: '其他',     prop: '其他',           cssVar: '--c-other',   label: '其他' }
 ];
-var USAGE_FIELDS = [
-  { key: '電kWh',  unit: 'kWh', pair: '電費'   },
-  { key: '水m3',   unit: 'm³',  pair: '水費'   },
-  { key: '瓦斯m3', unit: 'm³',  pair: '瓦斯費' }
-];
+
 var PERIODS = [
   { id: 'thisYear', label: '今年' },
   { id: 'lastYear', label: '去年' },
@@ -286,11 +286,11 @@ var PERIODS = [
 ];
 
 // ================= 狀態 =================
-var allRecords = [];        // 解析後的紀錄,依 ym 遞減
+var allRecords = [];
 var currentPeriod = 'thisYear';
 var searchText = '';
-var openIds = {};           // 展開中的紀錄 id
-var editingId = null;       // null = 新增模式
+var openIds = {};
+var editingId = null;
 
 // ================= 工具 =================
 function yen(n) {
@@ -314,29 +314,36 @@ function prevYm(ym) {
   m--; if (m < 1) { m = 12; y--; }
   return y * 100 + m;
 }
-function recTotal(r) {
+function grossTotal(r) {
   if (typeof r['合計'] === 'number') return r['合計'];
   var s = 0, has = false;
-  COST_FIELDS.forEach(function (f) {
+  PAY_FIELDS.forEach(function (f) {
     if (typeof r[f.key] === 'number') { s += r[f.key]; has = true; }
   });
   return has ? s : null;
+}
+function takeHome(r) {
+  if (typeof r['實拿薪水'] === 'number') return r['實拿薪水'];
+  var g = grossTotal(r);
+  if (g === null) return null;
+  var d = (typeof r['扣除額'] === 'number') ? r['扣除額'] : 0;
+  return g - d;
 }
 function showToast(msg) {
   var t = document.createElement('div');
   t.className = 'toast';
   t.textContent = msg;
   document.body.appendChild(t);
-  setTimeout(function () { t.remove(); }, 2200);
+  setTimeout(function () { t.remove(); }, 2400);
 }
 
 // ================= API =================
-function callApi(action, payload) {
+function callApi(action, payload, db) {
   return fetch(API, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     cache: 'no-store',
-    body: JSON.stringify({ action: action, db: 'rent', payload: payload || {} })
+    body: JSON.stringify({ action: action, db: db || DB, payload: payload || {} })
   }).then(function (r) {
     return r.json().then(function (d) {
       if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
@@ -345,23 +352,36 @@ function callApi(action, payload) {
   });
 }
 
+// 自動偵測「基本給予(月給)」實際欄位名稱(括號全半形差異)
+function detectBaseProp(pages) {
+  if (!pages.length) return;
+  var keys = Object.keys(pages[0].properties || {});
+  PAY_FIELDS.forEach(function (f) {
+    if (!f.detectPrefix) return;
+    for (var i = 0; i < keys.length; i++) {
+      if (keys[i].indexOf(f.detectPrefix) === 0) { f.prop = keys[i]; break; }
+    }
+  });
+}
+
 function parsePage(page) {
   var p = page.properties || {};
   var rec = { id: page.id };
-  var titleProp = p['名稱'];
+  var titleProp = p[TITLE_PROP];
   rec.name = (titleProp && titleProp.title && titleProp.title.length)
     ? titleProp.title.map(function (t) { return t.plain_text; }).join('')
     : '';
   rec.ym = /^\d{6}$/.test(rec.name) ? parseInt(rec.name, 10) : null;
-  COST_FIELDS.forEach(function (f) {
-    rec[f.key] = (p[f.key] && typeof p[f.key].number === 'number') ? p[f.key].number : null;
-  });
-  USAGE_FIELDS.forEach(function (f) {
-    rec[f.key] = (p[f.key] && typeof p[f.key].number === 'number') ? p[f.key].number : null;
+  PAY_FIELDS.forEach(function (f) {
+    rec[f.key] = (p[f.prop] && typeof p[f.prop].number === 'number') ? p[f.prop].number : null;
   });
   rec['合計'] = (p['合計'] && p['合計'].formula && typeof p['合計'].formula.number === 'number')
     ? p['合計'].formula.number : null;
-  rec['購買日期'] = (p['購買日期'] && p['購買日期'].date) ? p['購買日期'].date.start : null;
+  rec['實拿薪水'] = (p['實拿薪水'] && p['實拿薪水'].formula && typeof p['實拿薪水'].formula.number === 'number')
+    ? p['實拿薪水'].formula.number : null;
+  rec['扣除額'] = (p['扣除額'] && p['扣除額'].rollup && typeof p['扣除額'].rollup.number === 'number')
+    ? p['扣除額'].rollup.number : null;
+  rec.taxLinked = !!(p[RELATION_PROP] && p[RELATION_PROP].relation && p[RELATION_PROP].relation.length);
   return rec;
 }
 
@@ -371,24 +391,43 @@ function loadRecords(force) {
       var c = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
       if (c && Date.now() - c.ts < CACHE_TTL && Array.isArray(c.records)) {
         allRecords = c.records;
+        if (c.baseProp) PAY_FIELDS[0].prop = c.baseProp;
         renderAll();
         return Promise.resolve();
       }
     } catch (e) {}
   }
   return callApi('query').then(function (d) {
-    allRecords = (d.results || []).map(parsePage)
+    var pages = d.results || [];
+    detectBaseProp(pages);
+    allRecords = pages.map(parsePage)
       .sort(function (a, b) { return (b.ym || 0) - (a.ym || 0); });
     try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), records: allRecords }));
+      localStorage.setItem(CACHE_KEY, JSON.stringify({
+        ts: Date.now(), records: allRecords, baseProp: PAY_FIELDS[0].prop
+      }));
     } catch (e) {}
     renderAll();
   }).catch(function (e) {
     document.getElementById('listArea').innerHTML =
-      '<div class="empty">載入失敗:' + e.message + '<br>請確認 Vercel 環境變數與 Notion 分享設定</div>';
+      '<div class="empty">載入失敗:' + e.message + '<br>請確認 NOTION_DB_SALARY 環境變數與 Notion 分享設定</div>';
   });
 }
 function clearCache() { try { localStorage.removeItem(CACHE_KEY); } catch (e) {} }
+
+// 查詢同月份的稅金紀錄 page id(供 relation 綁定)
+function findTaxPageId(name) {
+  return callApi('query', {}, 'tax').then(function (d) {
+    var pages = d.results || [];
+    for (var i = 0; i < pages.length; i++) {
+      var tp = pages[i].properties && pages[i].properties['月份'];
+      var t = (tp && tp.title && tp.title.length)
+        ? tp.title.map(function (x) { return x.plain_text; }).join('') : '';
+      if (t === name) return pages[i].id;
+    }
+    return null;
+  }).catch(function () { return null; });
+}
 
 // ================= 期間篩選 =================
 function filteredRecords() {
@@ -436,29 +475,31 @@ function renderStats() {
   if (!recs.length) { area.style.display = 'none'; return; }
   area.style.display = '';
 
-  var totals = recs.map(function (r) { return { r: r, t: recTotal(r) }; })
+  var takes = recs.map(function (r) { return { r: r, t: takeHome(r) }; })
     .filter(function (x) { return x.t !== null; });
-  var sum = totals.reduce(function (s, x) { return s + x.t; }, 0);
-  var avg = totals.length ? sum / totals.length : 0;
+  var takeSum = takes.reduce(function (s, x) { return s + x.t; }, 0);
+  var takeAvg = takes.length ? takeSum / takes.length : 0;
+  var dedSum = recs.reduce(function (s, r) {
+    return s + (typeof r['扣除額'] === 'number' ? r['扣除額'] : 0);
+  }, 0);
   var latest = recs[0];
-  var maxX = totals.reduce(function (m, x) { return (!m || x.t > m.t) ? x : m; }, null);
 
   var cards = [
-    { lb: '最新月份(' + ymLabel(latest.ym) + ')', v: yen(recTotal(latest)) },
-    { lb: '期間累計', v: yen(sum) },
-    { lb: '月平均', v: yen(avg) },
-    { lb: '最高月份', v: maxX ? yen(maxX.t) : '—', s: maxX ? ymLabel(maxX.r.ym) : '' }
+    { lb: '最新月份實拿(' + ymLabel(latest.ym) + ')', v: yen(takeHome(latest)) },
+    { lb: '期間實拿累計', v: yen(takeSum) },
+    { lb: '月平均實拿', v: yen(takeAvg) },
+    { lb: '期間扣除累計', v: yen(dedSum) }
   ];
   document.getElementById('statCards').innerHTML = cards.map(function (c) {
     return '<div class="stat"><div class="lb">' + c.lb + '</div>' +
-      '<div class="v num">' + c.v + (c.s ? '<small>' + c.s + '</small>' : '') + '</div></div>';
+      '<div class="v num">' + c.v + '</div></div>';
   }).join('');
 
-  // 費用構成
+  // 支給構成
   var catBox = document.getElementById('catList');
-  var catSums = COST_FIELDS.map(function (f) {
+  var catSums = PAY_FIELDS.map(function (f) {
     var s = recs.reduce(function (acc, r) { return acc + (typeof r[f.key] === 'number' ? r[f.key] : 0); }, 0);
-    return { key: f.key, cssVar: f.cssVar, sum: s };
+    return { label: f.label, cssVar: f.cssVar, sum: s };
   });
   var catTotal = catSums.reduce(function (s, c) { return s + c.sum; }, 0) || 1;
   var catMax = Math.max.apply(null, catSums.map(function (c) { return c.sum; })) || 1;
@@ -467,7 +508,7 @@ function renderStats() {
     var pct = c.sum / catTotal * 100;
     return '<div class="cat">' +
       '<span class="dot" style="background:' + color + '"></span>' +
-      '<span class="nm">' + c.key + '</span>' +
+      '<span class="nm">' + c.label + '</span>' +
       '<span class="track"><span class="fill" style="width:' + (c.sum / catMax * 100).toFixed(1) + '%;background:' + color + '"></span></span>' +
       '<span class="amt num">' + yen(c.sum) + '</span>' +
       '<span class="pct num">' + pct.toFixed(1) + '%</span>' +
@@ -476,12 +517,12 @@ function renderStats() {
 
   // 堆疊長條圖(升冪,最多 24 個月)
   var asc = recs.slice().sort(function (a, b) { return a.ym - b.ym; }).slice(-24);
-  var maxT = Math.max.apply(null, asc.map(function (r) { return recTotal(r) || 0; })) || 1;
+  var maxT = Math.max.apply(null, asc.map(function (r) { return grossTotal(r) || 0; })) || 1;
   var H = 108;
   document.getElementById('chart').innerHTML = asc.map(function (r) {
-    var t = recTotal(r) || 0;
+    var t = grossTotal(r) || 0;
     var barH = Math.max(3, Math.round(t / maxT * H));
-    var segs = COST_FIELDS.map(function (f) {
+    var segs = PAY_FIELDS.map(function (f) {
       var v = typeof r[f.key] === 'number' ? r[f.key] : 0;
       if (v <= 0 || t <= 0) return '';
       var h = Math.max(1, Math.round(v / t * barH));
@@ -519,7 +560,7 @@ function renderList() {
     head.className = 'head';
     head.innerHTML = '<span class="arrow">▶</span>' +
       '<span class="ym num">' + ymLabel(r.ym) + '</span>' +
-      '<span class="total num">' + yen(recTotal(r)) + '</span>';
+      '<span class="total num">' + yen(takeHome(r)) + '</span>';
     head.onclick = function () {
       if (openIds[r.id]) delete openIds[r.id]; else openIds[r.id] = true;
       renderList();
@@ -529,30 +570,33 @@ function renderList() {
     if (isOpen) {
       var body = document.createElement('div');
       body.className = 'body';
-      var rows = COST_FIELDS.map(function (f) {
-        var usage = USAGE_FIELDS.filter(function (u) { return u.pair === f.key; })[0];
-        var uTxt = '';
-        if (usage && typeof r[usage.key] === 'number') {
-          uTxt = r[usage.key] + ' ' + usage.unit;
-          if (typeof r[f.key] === 'number' && r[usage.key] > 0) {
-            uTxt += '・¥' + (r[f.key] / r[usage.key]).toFixed(1) + '/' + usage.unit;
-          }
-        }
-        if (f.key === '燈油' && r['購買日期']) {
-          uTxt = (uTxt ? uTxt + '・' : '') + r['購買日期'];
-        }
-        return '<div class="drow">' +
+      var html = '';
+      PAY_FIELDS.forEach(function (f) {
+        html += '<div class="drow">' +
           '<span class="dot" style="background:' + cssColor(f.cssVar) + '"></span>' +
-          '<span class="k">' + f.key + '</span>' +
-          (uTxt ? '<span class="u num">' + uTxt + '</span>' : '') +
+          '<span class="k">' + f.label + '</span>' +
           '<span class="v num">' + yen(r[f.key]) + '</span>' +
           '</div>';
-      }).join('');
-      body.innerHTML = rows +
+      });
+      html += '<div class="drow hr">' +
+        '<span class="k">支給合計</span>' +
+        '<span class="v num">' + yen(grossTotal(r)) + '</span></div>';
+      html += '<div class="drow">' +
+        '<span class="k">扣除額</span>' +
+        '<span class="u">' + (r.taxLinked ? '已連結稅金' : '未連結稅金') + '</span>' +
+        '<span class="v num">' + (r['扣除額'] === null ? '—' : '−¥' + Math.round(r['扣除額']).toLocaleString('ja-JP')) + '</span></div>';
+      html += '<div class="drow take">' +
+        '<span class="k">實拿薪水</span>' +
+        '<span class="v num">' + yen(takeHome(r)) + '</span></div>';
+      body.innerHTML = html +
         '<div class="recbtns">' +
+        (!r.taxLinked ? '<button class="sbtn link">連結稅金</button>' : '') +
         '<button class="sbtn edit">編輯</button>' +
         '<button class="sbtn del">刪除</button>' +
         '</div>';
+      if (!r.taxLinked) {
+        body.querySelector('.link').onclick = function () { linkTax(r); };
+      }
       body.querySelector('.edit').onclick = function () { openModal(r.id); };
       body.querySelector('.del').onclick = function () { deleteRecord(r); };
       div.appendChild(body);
@@ -561,23 +605,31 @@ function renderList() {
   });
 }
 
+// ================= 連結稅金 =================
+function linkTax(rec) {
+  showToast('搜尋同月份稅金…');
+  findTaxPageId(rec.name).then(function (taxId) {
+    if (!taxId) { showToast('找不到稅金 ' + rec.name + ' 的紀錄'); return; }
+    var props = {};
+    props[RELATION_PROP] = { relation: [{ id: taxId }] };
+    return callApi('update', { pageId: rec.id, properties: props }).then(function () {
+      showToast('已連結稅金 ' + rec.name);
+      clearCache();
+      setTimeout(function () { loadRecords(true); }, 500);
+    });
+  }).catch(function (e) {
+    showToast('連結失敗:' + e.message);
+  });
+}
+
 // ================= 新增 / 編輯 =================
 function buildModalFields() {
-  var costBox = document.getElementById('costFields');
-  costBox.innerHTML = COST_FIELDS.map(function (f) {
+  document.getElementById('payFields').innerHTML = PAY_FIELDS.map(function (f) {
     return '<div class="fgroup">' +
-      '<label><span class="dot" style="background:' + cssColor(f.cssVar) + '"></span>' + f.key + '</label>' +
+      '<label><span class="dot" style="background:' + cssColor(f.cssVar) + '"></span>' + f.label + '</label>' +
       '<div class="frow">' +
       '<input type="number" inputmode="decimal" id="f_' + f.key + '" placeholder="¥">' +
-      '<button class="brick" type="button" data-field="' + f.key + '" style="display:none"></button>' +
-      '</div></div>';
-  }).join('');
-  var usageBox = document.getElementById('usageFields');
-  usageBox.innerHTML = USAGE_FIELDS.map(function (f) {
-    return '<div class="fgroup">' +
-      '<label>' + f.key + '</label>' +
-      '<div class="frow">' +
-      '<input type="number" inputmode="decimal" id="f_' + f.key + '" placeholder="' + f.unit + '">' +
+      '<button class="brick prev" type="button" data-field="' + f.key + '" style="display:none"></button>' +
       '</div></div>';
   }).join('');
 }
@@ -589,7 +641,6 @@ function openModal(pageId) {
 
   document.getElementById('modalTitle').textContent = editingId ? '編輯紀錄' : '新增紀錄';
 
-  // 名稱:編輯時帶原值;新增時自動帶下一個年月
   var nameInput = document.getElementById('f_name');
   if (rec) {
     nameInput.value = rec.name;
@@ -598,14 +649,12 @@ function openModal(pageId) {
     nameInput.value = latest ? String(nextYm(latest.ym)) : '';
   }
 
-  // 數值欄位
-  COST_FIELDS.concat(USAGE_FIELDS).forEach(function (f) {
+  PAY_FIELDS.forEach(function (f) {
     var el = document.getElementById('f_' + f.key);
     el.value = (rec && typeof rec[f.key] === 'number') ? rec[f.key] : '';
   });
-  document.getElementById('f_date').value = (rec && rec['購買日期']) ? rec['購買日期'] : '';
 
-  // 上月數值磚塊:新增 → 最新一筆;編輯 → 該筆的前一個月
+  // 上月數值磚塊
   var baseYm = rec ? rec.ym : null;
   var prevRec = null;
   if (rec && baseYm) {
@@ -613,7 +662,7 @@ function openModal(pageId) {
   } else {
     prevRec = allRecords.filter(function (r) { return r.ym !== null; })[0] || null;
   }
-  document.querySelectorAll('#costFields .brick').forEach(function (b) {
+  document.querySelectorAll('.brick.prev').forEach(function (b) {
     var key = b.getAttribute('data-field');
     if (prevRec && typeof prevRec[key] === 'number') {
       b.style.display = '';
@@ -634,35 +683,40 @@ function closeModal() {
 
 function saveRecord() {
   var name = document.getElementById('f_name').value.trim();
-  if (!/^\d{6}$/.test(name)) { showToast('名稱請輸入 6 位年月,例如 202607'); return; }
+  if (!/^\d{6}$/.test(name)) { showToast('月份請輸入 6 位年月,例如 202606'); return; }
 
-  var props = { '名稱': { title: [{ text: { content: name } }] } };
-  COST_FIELDS.concat(USAGE_FIELDS).forEach(function (f) {
+  var props = {};
+  props[TITLE_PROP] = { title: [{ text: { content: name } }] };
+  PAY_FIELDS.forEach(function (f) {
     var v = document.getElementById('f_' + f.key).value;
     if (v !== '') {
-      props[f.key] = { number: parseFloat(v) };
+      props[f.prop] = { number: parseFloat(v) };
     } else if (editingId) {
-      props[f.key] = { number: null }; // 編輯時允許清空
+      props[f.prop] = { number: null };
     }
   });
-  var d = document.getElementById('f_date').value;
-  if (d) props['購買日期'] = { date: { start: d } };
-  else if (editingId) props['購買日期'] = { date: null };
 
   var btn = document.getElementById('btnSave');
   btn.disabled = true; btn.textContent = '儲存中…';
 
-  var p = editingId
-    ? callApi('update', { pageId: editingId, properties: props })
-    : callApi('create', { properties: props });
+  var editRec = editingId ? allRecords.filter(function (r) { return r.id === editingId; })[0] : null;
+  var needLink = !editingId || (editRec && !editRec.taxLinked);
 
-  p.then(function () {
-    closeModal();
-    showToast(editingId ? '已更新 ' + name : '已新增 ' + name);
-    clearCache();
-    // Notion 索引延遲:新增後等 1.5 秒再查詢
-    var delay = editingId ? 500 : 1500;
-    setTimeout(function () { loadRecords(true); }, delay);
+  var pre = needLink ? findTaxPageId(name) : Promise.resolve(null);
+  pre.then(function (taxId) {
+    if (taxId) props[RELATION_PROP] = { relation: [{ id: taxId }] };
+    var p = editingId
+      ? callApi('update', { pageId: editingId, properties: props })
+      : callApi('create', { properties: props });
+    return p.then(function () {
+      closeModal();
+      var msg = (editingId ? '已更新 ' : '已新增 ') + name;
+      if (needLink) msg += taxId ? ',已連結稅金' : ',找不到同月份稅金';
+      showToast(msg);
+      clearCache();
+      var delay = editingId ? 500 : 1500;
+      setTimeout(function () { loadRecords(true); }, delay);
+    });
   }).catch(function (e) {
     showToast('儲存失敗:' + e.message);
   }).finally(function () {

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>租屋費用</title>
+<title>稅金</title>
 <style>
 :root{
   --bg:#EBE8E1;
@@ -14,11 +14,11 @@
   --accent:#7E96A0;
   --accent-ink:#F6F8F8;
   --danger:#B4776C;
-  --c-elec:#C8A15A;
-  --c-water:#7E96A0;
-  --c-gas:#C0826C;
-  --c-mobile:#9C8BA5;
-  --c-oil:#A4B08B;
+  --c-social:#7E96A0;
+  --c-income:#C8A15A;
+  --c-resident:#C0826C;
+  --c-leave:#9C8BA5;
+  --c-child:#A4B08B;
   --radius:14px;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -125,9 +125,13 @@ body{
 .rec .body{border-top:1px solid var(--line);padding:11px 15px 13px}
 .drow{display:flex;align-items:baseline;gap:9px;padding:5px 0;font-size:.9rem}
 .drow .dot{width:9px;height:9px;border-radius:3px;flex:none;align-self:center}
-.drow .k{color:var(--muted);width:74px;flex:none}
+.drow .k{color:var(--muted);width:96px;flex:none}
 .drow .u{color:var(--muted);font-size:.76rem}
 .drow .v{margin-left:auto;font-weight:600}
+.drow.sub{padding-left:20px;font-size:.84rem}
+.drow.sub .k{color:var(--muted);width:86px}
+.drow.sub .v{font-weight:500;color:var(--muted)}
+.drow.strong .k{color:var(--ink);font-weight:600}
 .recbtns{display:flex;gap:8px;margin-top:11px}
 .sbtn{
   flex:1;height:36px;border-radius:10px;border:1px solid var(--line);
@@ -148,6 +152,7 @@ body{
 }
 @media(min-width:600px){.modal{border-radius:20px}}
 .modal h3{font-size:1.08rem;margin-bottom:16px}
+.msec{font-size:.76rem;color:var(--muted);letter-spacing:.06em;margin:16px 0 8px;font-weight:600}
 .fgroup{margin-bottom:13px}
 .fgroup label{display:flex;align-items:center;gap:7px;font-size:.82rem;color:var(--muted);margin-bottom:6px}
 .fgroup label .dot{width:9px;height:9px;border-radius:3px}
@@ -162,7 +167,6 @@ body{
   background:var(--bg);color:var(--muted);font-size:.8rem;cursor:pointer;white-space:nowrap;
 }
 .brick:active{background:var(--line)}
-.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
 .mbtns{display:flex;gap:10px;margin-top:18px}
 .mbtns .cancel{
   flex:1;height:46px;border-radius:12px;border:1px solid var(--line);background:var(--bg);
@@ -194,13 +198,13 @@ body{
 <div class="wrap">
 
   <div class="ptabs">
-    <a class="ptab on" href="index.html">租屋費用</a>
-    <a class="ptab" href="tax.html">稅金</a>
+    <a class="ptab" href="index.html">租屋費用</a>
+    <a class="ptab on" href="tax.html">稅金</a>
     <a class="ptab" href="salary.html">薪資</a>
   </div>
 
   <div class="topbar">
-    <h1>租屋費用</h1>
+    <h1>稅金</h1>
     <span class="sub num" id="recCount"></span>
     <div class="actions">
       <button class="iconbtn" id="btnRefresh" title="重新整理">&#8635;</button>
@@ -214,7 +218,7 @@ body{
     <div class="stats" id="statCards"></div>
 
     <div class="card">
-      <h2>費用構成</h2>
+      <h2>稅金構成(合計 = 社會保險＋所得稅＋住民稅＋事假)</h2>
       <div id="catList"></div>
     </div>
 
@@ -238,20 +242,20 @@ body{
     <h3 id="modalTitle">新增紀錄</h3>
 
     <div class="fgroup">
-      <label>名稱(年月)</label>
+      <label>月份</label>
       <div class="frow">
-        <input type="text" id="f_name" inputmode="numeric" placeholder="例:202607" maxlength="6">
+        <input type="text" id="f_name" inputmode="numeric" placeholder="例:202606" maxlength="6">
       </div>
     </div>
 
-    <div id="costFields"></div>
+    <div class="msec">保險明細</div>
+    <div id="subFields"></div>
 
-    <div class="fgroup">
-      <label>燈油購買日期</label>
-      <div class="frow"><input type="date" id="f_date"></div>
-    </div>
+    <div class="msec">計入合計的項目</div>
+    <div id="mainFields"></div>
 
-    <div class="fgrid" id="usageFields"></div>
+    <div class="msec">其他(不計入合計)</div>
+    <div id="infoFields"></div>
 
     <div class="mbtns">
       <button class="cancel" id="btnCancel">取消</button>
@@ -263,21 +267,30 @@ body{
 <script>
 // ================= 設定 =================
 var API = '/api/notion';
-var CACHE_KEY = 'rent_cache_v1';
+var DB = 'tax';
+var CACHE_KEY = 'tax_cache_v1';
 var CACHE_TTL = 5 * 60 * 1000; // 5 分鐘
+var TITLE_PROP = '月份';
 
-var COST_FIELDS = [
-  { key: '電費',     cssVar: '--c-elec'   },
-  { key: '水費',     cssVar: '--c-water'  },
-  { key: '瓦斯費',   cssVar: '--c-gas'    },
-  { key: '樂天通信', cssVar: '--c-mobile' },
-  { key: '燈油',     cssVar: '--c-oil'    }
+// 計入合計的四項(合計 = 社會保險＋所得稅＋住民稅＋事假)
+var TOTAL_FIELDS = [
+  { key: '社會保險', cssVar: '--c-social'   },
+  { key: '所得稅',   cssVar: '--c-income'   },
+  { key: '住民稅',   cssVar: '--c-resident' },
+  { key: '事假',     cssVar: '--c-leave'    }
 ];
-var USAGE_FIELDS = [
-  { key: '電kWh',  unit: 'kWh', pair: '電費'   },
-  { key: '水m3',   unit: 'm³',  pair: '水費'   },
-  { key: '瓦斯m3', unit: 'm³',  pair: '瓦斯費' }
+// 社會保險的明細子項(參考用)
+var SUB_FIELDS = [
+  { key: '健康保險' },
+  { key: '厚生年金保險' },
+  { key: '雇用保險' }
 ];
+// 不計入合計
+var INFO_FIELDS = [
+  { key: '子育て支援金', cssVar: '--c-child' }
+];
+var ALL_NUM_FIELDS = SUB_FIELDS.concat(TOTAL_FIELDS, INFO_FIELDS);
+
 var PERIODS = [
   { id: 'thisYear', label: '今年' },
   { id: 'lastYear', label: '去年' },
@@ -286,11 +299,11 @@ var PERIODS = [
 ];
 
 // ================= 狀態 =================
-var allRecords = [];        // 解析後的紀錄,依 ym 遞減
+var allRecords = [];
 var currentPeriod = 'thisYear';
 var searchText = '';
-var openIds = {};           // 展開中的紀錄 id
-var editingId = null;       // null = 新增模式
+var openIds = {};
+var editingId = null;
 
 // ================= 工具 =================
 function yen(n) {
@@ -317,7 +330,7 @@ function prevYm(ym) {
 function recTotal(r) {
   if (typeof r['合計'] === 'number') return r['合計'];
   var s = 0, has = false;
-  COST_FIELDS.forEach(function (f) {
+  TOTAL_FIELDS.forEach(function (f) {
     if (typeof r[f.key] === 'number') { s += r[f.key]; has = true; }
   });
   return has ? s : null;
@@ -336,7 +349,7 @@ function callApi(action, payload) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     cache: 'no-store',
-    body: JSON.stringify({ action: action, db: 'rent', payload: payload || {} })
+    body: JSON.stringify({ action: action, db: DB, payload: payload || {} })
   }).then(function (r) {
     return r.json().then(function (d) {
       if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
@@ -348,20 +361,16 @@ function callApi(action, payload) {
 function parsePage(page) {
   var p = page.properties || {};
   var rec = { id: page.id };
-  var titleProp = p['名稱'];
+  var titleProp = p[TITLE_PROP];
   rec.name = (titleProp && titleProp.title && titleProp.title.length)
     ? titleProp.title.map(function (t) { return t.plain_text; }).join('')
     : '';
   rec.ym = /^\d{6}$/.test(rec.name) ? parseInt(rec.name, 10) : null;
-  COST_FIELDS.forEach(function (f) {
-    rec[f.key] = (p[f.key] && typeof p[f.key].number === 'number') ? p[f.key].number : null;
-  });
-  USAGE_FIELDS.forEach(function (f) {
+  ALL_NUM_FIELDS.forEach(function (f) {
     rec[f.key] = (p[f.key] && typeof p[f.key].number === 'number') ? p[f.key].number : null;
   });
   rec['合計'] = (p['合計'] && p['合計'].formula && typeof p['合計'].formula.number === 'number')
     ? p['合計'].formula.number : null;
-  rec['購買日期'] = (p['購買日期'] && p['購買日期'].date) ? p['購買日期'].date.start : null;
   return rec;
 }
 
@@ -385,7 +394,7 @@ function loadRecords(force) {
     renderAll();
   }).catch(function (e) {
     document.getElementById('listArea').innerHTML =
-      '<div class="empty">載入失敗:' + e.message + '<br>請確認 Vercel 環境變數與 Notion 分享設定</div>';
+      '<div class="empty">載入失敗:' + e.message + '<br>請確認 NOTION_DB_TAX 環境變數與 Notion 分享設定</div>';
   });
 }
 function clearCache() { try { localStorage.removeItem(CACHE_KEY); } catch (e) {} }
@@ -454,9 +463,9 @@ function renderStats() {
       '<div class="v num">' + c.v + (c.s ? '<small>' + c.s + '</small>' : '') + '</div></div>';
   }).join('');
 
-  // 費用構成
+  // 構成(四項)
   var catBox = document.getElementById('catList');
-  var catSums = COST_FIELDS.map(function (f) {
+  var catSums = TOTAL_FIELDS.map(function (f) {
     var s = recs.reduce(function (acc, r) { return acc + (typeof r[f.key] === 'number' ? r[f.key] : 0); }, 0);
     return { key: f.key, cssVar: f.cssVar, sum: s };
   });
@@ -481,7 +490,7 @@ function renderStats() {
   document.getElementById('chart').innerHTML = asc.map(function (r) {
     var t = recTotal(r) || 0;
     var barH = Math.max(3, Math.round(t / maxT * H));
-    var segs = COST_FIELDS.map(function (f) {
+    var segs = TOTAL_FIELDS.map(function (f) {
       var v = typeof r[f.key] === 'number' ? r[f.key] : 0;
       if (v <= 0 || t <= 0) return '';
       var h = Math.max(1, Math.round(v / t * barH));
@@ -529,26 +538,32 @@ function renderList() {
     if (isOpen) {
       var body = document.createElement('div');
       body.className = 'body';
-      var rows = COST_FIELDS.map(function (f) {
-        var usage = USAGE_FIELDS.filter(function (u) { return u.pair === f.key; })[0];
-        var uTxt = '';
-        if (usage && typeof r[usage.key] === 'number') {
-          uTxt = r[usage.key] + ' ' + usage.unit;
-          if (typeof r[f.key] === 'number' && r[usage.key] > 0) {
-            uTxt += '・¥' + (r[f.key] / r[usage.key]).toFixed(1) + '/' + usage.unit;
-          }
-        }
-        if (f.key === '燈油' && r['購買日期']) {
-          uTxt = (uTxt ? uTxt + '・' : '') + r['購買日期'];
-        }
-        return '<div class="drow">' +
-          '<span class="dot" style="background:' + cssColor(f.cssVar) + '"></span>' +
+      var html = '';
+      // 保險明細(子項)
+      SUB_FIELDS.forEach(function (f) {
+        html += '<div class="drow sub">' +
           '<span class="k">' + f.key + '</span>' +
-          (uTxt ? '<span class="u num">' + uTxt + '</span>' : '') +
           '<span class="v num">' + yen(r[f.key]) + '</span>' +
           '</div>';
-      }).join('');
-      body.innerHTML = rows +
+      });
+      // 計入合計的四項
+      TOTAL_FIELDS.forEach(function (f) {
+        html += '<div class="drow strong">' +
+          '<span class="dot" style="background:' + cssColor(f.cssVar) + '"></span>' +
+          '<span class="k">' + f.key + '</span>' +
+          '<span class="v num">' + yen(r[f.key]) + '</span>' +
+          '</div>';
+      });
+      // 不計入合計
+      INFO_FIELDS.forEach(function (f) {
+        html += '<div class="drow">' +
+          '<span class="dot" style="background:' + cssColor(f.cssVar) + '"></span>' +
+          '<span class="k">' + f.key + '</span>' +
+          '<span class="u">不計入合計</span>' +
+          '<span class="v num">' + yen(r[f.key]) + '</span>' +
+          '</div>';
+      });
+      body.innerHTML = html +
         '<div class="recbtns">' +
         '<button class="sbtn edit">編輯</button>' +
         '<button class="sbtn del">刪除</button>' +
@@ -562,24 +577,34 @@ function renderList() {
 }
 
 // ================= 新增 / 編輯 =================
+function fieldRow(f, withDot) {
+  return '<div class="fgroup">' +
+    '<label>' + (withDot && f.cssVar ? '<span class="dot" style="background:' + cssColor(f.cssVar) + '"></span>' : '') + f.key + '</label>' +
+    '<div class="frow">' +
+    '<input type="number" inputmode="decimal" id="f_' + f.key + '" placeholder="¥">' +
+    '<button class="brick prev" type="button" data-field="' + f.key + '" style="display:none"></button>' +
+    (f.key === '社會保險' ? '<button class="brick" type="button" id="btnAutoSocial">自動計算</button>' : '') +
+    '</div></div>';
+}
+
 function buildModalFields() {
-  var costBox = document.getElementById('costFields');
-  costBox.innerHTML = COST_FIELDS.map(function (f) {
-    return '<div class="fgroup">' +
-      '<label><span class="dot" style="background:' + cssColor(f.cssVar) + '"></span>' + f.key + '</label>' +
-      '<div class="frow">' +
-      '<input type="number" inputmode="decimal" id="f_' + f.key + '" placeholder="¥">' +
-      '<button class="brick" type="button" data-field="' + f.key + '" style="display:none"></button>' +
-      '</div></div>';
-  }).join('');
-  var usageBox = document.getElementById('usageFields');
-  usageBox.innerHTML = USAGE_FIELDS.map(function (f) {
-    return '<div class="fgroup">' +
-      '<label>' + f.key + '</label>' +
-      '<div class="frow">' +
-      '<input type="number" inputmode="decimal" id="f_' + f.key + '" placeholder="' + f.unit + '">' +
-      '</div></div>';
-  }).join('');
+  document.getElementById('subFields').innerHTML =
+    SUB_FIELDS.map(function (f) { return fieldRow(f, false); }).join('');
+  document.getElementById('mainFields').innerHTML =
+    TOTAL_FIELDS.map(function (f) { return fieldRow(f, true); }).join('');
+  document.getElementById('infoFields').innerHTML =
+    INFO_FIELDS.map(function (f) { return fieldRow(f, true); }).join('');
+
+  // 社會保險自動計算 = 健康保險＋厚生年金保險＋雇用保險
+  document.getElementById('btnAutoSocial').onclick = function () {
+    var s = 0, has = false;
+    SUB_FIELDS.forEach(function (f) {
+      var v = document.getElementById('f_' + f.key).value;
+      if (v !== '') { s += parseFloat(v); has = true; }
+    });
+    if (has) document.getElementById('f_社會保險').value = s;
+    else showToast('請先輸入三項保險金額');
+  };
 }
 
 function openModal(pageId) {
@@ -589,7 +614,6 @@ function openModal(pageId) {
 
   document.getElementById('modalTitle').textContent = editingId ? '編輯紀錄' : '新增紀錄';
 
-  // 名稱:編輯時帶原值;新增時自動帶下一個年月
   var nameInput = document.getElementById('f_name');
   if (rec) {
     nameInput.value = rec.name;
@@ -598,14 +622,12 @@ function openModal(pageId) {
     nameInput.value = latest ? String(nextYm(latest.ym)) : '';
   }
 
-  // 數值欄位
-  COST_FIELDS.concat(USAGE_FIELDS).forEach(function (f) {
+  ALL_NUM_FIELDS.forEach(function (f) {
     var el = document.getElementById('f_' + f.key);
     el.value = (rec && typeof rec[f.key] === 'number') ? rec[f.key] : '';
   });
-  document.getElementById('f_date').value = (rec && rec['購買日期']) ? rec['購買日期'] : '';
 
-  // 上月數值磚塊:新增 → 最新一筆;編輯 → 該筆的前一個月
+  // 上月數值磚塊
   var baseYm = rec ? rec.ym : null;
   var prevRec = null;
   if (rec && baseYm) {
@@ -613,7 +635,7 @@ function openModal(pageId) {
   } else {
     prevRec = allRecords.filter(function (r) { return r.ym !== null; })[0] || null;
   }
-  document.querySelectorAll('#costFields .brick').forEach(function (b) {
+  document.querySelectorAll('.brick.prev').forEach(function (b) {
     var key = b.getAttribute('data-field');
     if (prevRec && typeof prevRec[key] === 'number') {
       b.style.display = '';
@@ -634,20 +656,18 @@ function closeModal() {
 
 function saveRecord() {
   var name = document.getElementById('f_name').value.trim();
-  if (!/^\d{6}$/.test(name)) { showToast('名稱請輸入 6 位年月,例如 202607'); return; }
+  if (!/^\d{6}$/.test(name)) { showToast('月份請輸入 6 位年月,例如 202606'); return; }
 
-  var props = { '名稱': { title: [{ text: { content: name } }] } };
-  COST_FIELDS.concat(USAGE_FIELDS).forEach(function (f) {
+  var props = {};
+  props[TITLE_PROP] = { title: [{ text: { content: name } }] };
+  ALL_NUM_FIELDS.forEach(function (f) {
     var v = document.getElementById('f_' + f.key).value;
     if (v !== '') {
       props[f.key] = { number: parseFloat(v) };
     } else if (editingId) {
-      props[f.key] = { number: null }; // 編輯時允許清空
+      props[f.key] = { number: null };
     }
   });
-  var d = document.getElementById('f_date').value;
-  if (d) props['購買日期'] = { date: { start: d } };
-  else if (editingId) props['購買日期'] = { date: null };
 
   var btn = document.getElementById('btnSave');
   btn.disabled = true; btn.textContent = '儲存中…';
@@ -660,7 +680,6 @@ function saveRecord() {
     closeModal();
     showToast(editingId ? '已更新 ' + name : '已新增 ' + name);
     clearCache();
-    // Notion 索引延遲:新增後等 1.5 秒再查詢
     var delay = editingId ? 500 : 1500;
     setTimeout(function () { loadRecords(true); }, delay);
   }).catch(function (e) {

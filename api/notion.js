@@ -1,6 +1,19 @@
-// api/notion.js — Notion API 代理(租屋費用)
-// 環境變數:NOTION_TOKEN(integration token)、NOTION_DB_ID(租屋費用資料庫 ID)
+// api/notion.js — Notion API 代理(租屋費用 / 稅金)
+// 環境變數:
+//   NOTION_TOKEN    integration token
+//   NOTION_DB_RENT  租屋費用資料庫 ID(相容舊名 NOTION_DB_ID)
+//   NOTION_DB_TAX     稅金資料庫 ID
+//   NOTION_DB_SALARY  薪資資料庫 ID
 const NOTION_API = 'https://api.notion.com/v1';
+
+function dbConfig(key) {
+  const map = {
+    rent: { id: process.env.NOTION_DB_RENT || process.env.NOTION_DB_ID, titleProp: '名稱' },
+    tax:    { id: process.env.NOTION_DB_TAX, titleProp: '月份' },
+    salary: { id: process.env.NOTION_DB_SALARY, titleProp: '月份' }
+  };
+  return map[key] || null;
+}
 
 function notionHeaders() {
   return {
@@ -22,17 +35,17 @@ async function notionFetch(path, options) {
   return data;
 }
 
-// 查詢全部紀錄(自動處理分頁),依名稱(YYYYMM)遞減排序
-async function queryAll(dbId) {
+// 查詢全部紀錄(自動處理分頁),依 title(YYYYMM)遞減排序
+async function queryAll(cfg) {
   const results = [];
   let cursor = undefined;
   do {
     const body = {
       page_size: 100,
-      sorts: [{ property: '名稱', direction: 'descending' }]
+      sorts: [{ property: cfg.titleProp, direction: 'descending' }]
     };
     if (cursor) body.start_cursor = cursor;
-    const data = await notionFetch('/databases/' + dbId + '/query', {
+    const data = await notionFetch('/databases/' + cfg.id + '/query', {
       method: 'POST',
       body: JSON.stringify(body)
     });
@@ -50,27 +63,30 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
-  const dbId = process.env.NOTION_DB_ID;
-  if (!process.env.NOTION_TOKEN || !dbId) {
-    res.status(500).json({ error: '缺少 NOTION_TOKEN 或 NOTION_DB_ID 環境變數' });
+  if (!process.env.NOTION_TOKEN) {
+    res.status(500).json({ error: '缺少 NOTION_TOKEN 環境變數' });
     return;
   }
 
-  const { action, payload } = req.body || {};
+  const { action, db, payload } = req.body || {};
+  const cfg = dbConfig(db || 'rent');
+  if (!cfg || !cfg.id) {
+    res.status(500).json({ error: '缺少資料庫 ID 環境變數(db=' + (db || 'rent') + ')' });
+    return;
+  }
 
   try {
     switch (action) {
       case 'query': {
-        const pages = await queryAll(dbId);
+        const pages = await queryAll(cfg);
         res.status(200).json({ results: pages });
         return;
       }
       case 'create': {
-        // payload.properties 為前端組好的 Notion properties 物件
         const data = await notionFetch('/pages', {
           method: 'POST',
           body: JSON.stringify({
-            parent: { database_id: dbId },
+            parent: { database_id: cfg.id },
             properties: payload.properties
           })
         });
@@ -94,7 +110,7 @@ module.exports = async (req, res) => {
         return;
       }
       case 'schema': {
-        const data = await notionFetch('/databases/' + dbId, { method: 'GET' });
+        const data = await notionFetch('/databases/' + cfg.id, { method: 'GET' });
         res.status(200).json(data);
         return;
       }
