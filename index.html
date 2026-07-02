@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>租屋費用</title>
+<style>
+:root{
+  --bg:#EBE8E1;
+  --card:#F8F7F3;
+  --ink:#3D3934;
+  --muted:#8F887C;
+  --line:#DDD8CE;
+  --accent:#7E96A0;
+  --accent-ink:#F6F8F8;
+  --danger:#B4776C;
+  --c-elec:#C8A15A;
+  --c-water:#7E96A0;
+  --c-gas:#C0826C;
+  --c-mobile:#9C8BA5;
+  --c-oil:#A4B08B;
+  --radius:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{font-size:16px}
+body{
+  background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans TC","Noto Sans JP","PingFang TC",sans-serif;
+  padding-bottom:60px;
+}
+.wrap{max-width:720px;margin:0 auto;padding:16px 14px}
+.num{font-variant-numeric:tabular-nums}
+
+/* header */
+.topbar{display:flex;align-items:baseline;gap:10px;padding:8px 2px 14px}
+.topbar h1{font-size:1.45rem;letter-spacing:.06em;font-weight:700}
+.topbar .sub{color:var(--muted);font-size:.8rem}
+.topbar .actions{margin-left:auto;display:flex;gap:8px}
+.iconbtn{
+  border:1px solid var(--line);background:var(--card);color:var(--ink);
+  width:38px;height:38px;border-radius:11px;font-size:1.05rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.btn-primary{
+  border:none;background:var(--accent);color:var(--accent-ink);
+  height:38px;padding:0 16px;border-radius:11px;font-size:.95rem;font-weight:600;cursor:pointer;
+  display:flex;align-items:center;gap:6px;
+}
+.iconbtn:active,.btn-primary:active{transform:scale(.96)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinning{animation:spin .8s linear infinite}
+
+/* period chips */
+.chips{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 14px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{
+  border:1px solid var(--line);background:var(--card);color:var(--muted);
+  padding:7px 15px;border-radius:999px;font-size:.88rem;white-space:nowrap;cursor:pointer;font-weight:500;
+}
+.chip.on{background:var(--ink);border-color:var(--ink);color:#F4F2ED;font-weight:600}
+
+/* stat cards */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.stat{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:13px 15px 12px;
+}
+.stat .lb{font-size:.74rem;color:var(--muted);letter-spacing:.05em;margin-bottom:5px}
+.stat .v{font-size:1.32rem;font-weight:700;letter-spacing:.01em}
+.stat .v small{font-size:.75rem;font-weight:500;color:var(--muted);margin-left:3px}
+
+/* section card */
+.card{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:15px;margin-bottom:14px;
+}
+.card h2{font-size:.86rem;letter-spacing:.08em;color:var(--muted);font-weight:600;margin-bottom:12px}
+
+/* category breakdown */
+.cat{display:flex;align-items:center;gap:10px;padding:6px 0}
+.cat .dot{width:10px;height:10px;border-radius:3px;flex:none}
+.cat .nm{font-size:.9rem;width:74px;flex:none}
+.cat .track{flex:1;height:8px;background:var(--bg);border-radius:99px;overflow:hidden}
+.cat .fill{height:100%;border-radius:99px}
+.cat .amt{font-size:.88rem;font-weight:600;width:82px;text-align:right;flex:none}
+.cat .pct{font-size:.74rem;color:var(--muted);width:44px;text-align:right;flex:none}
+
+/* stacked bar chart */
+.chartScroll{overflow-x:auto;scrollbar-width:none}
+.chartScroll::-webkit-scrollbar{display:none}
+.chart{display:flex;align-items:flex-end;gap:7px;height:150px;min-width:100%;width:max-content;padding-top:4px}
+.col{display:flex;flex-direction:column;align-items:center;gap:5px;width:30px;flex:none}
+.bar{width:18px;display:flex;flex-direction:column-reverse;border-radius:5px;overflow:hidden}
+.seg{width:100%}
+.col .m{font-size:.66rem;color:var(--muted);white-space:nowrap}
+.col .y{font-size:.6rem;color:var(--muted);opacity:.75;white-space:nowrap;height:.8em}
+
+/* search */
+.search{position:relative;margin-bottom:12px}
+.search input{
+  width:100%;height:44px;border:1px solid var(--line);border-radius:12px;
+  background:var(--card);padding:0 14px 0 38px;font-size:.95rem;color:var(--ink);outline:none;
+}
+.search input:focus{border-color:var(--accent)}
+.search .ic{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.9rem}
+
+/* record list */
+.rec{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  margin-bottom:9px;overflow:hidden;
+}
+.rec .head{display:flex;align-items:center;padding:13px 15px;cursor:pointer;gap:10px}
+.rec .ym{font-weight:600;font-size:.98rem}
+.rec .total{margin-left:auto;font-weight:700;font-size:1.02rem}
+.rec .arrow{color:var(--muted);font-size:.75rem;transition:transform .18s}
+.rec.open .arrow{transform:rotate(90deg)}
+.rec .body{border-top:1px solid var(--line);padding:11px 15px 13px}
+.drow{display:flex;align-items:baseline;gap:9px;padding:5px 0;font-size:.9rem}
+.drow .dot{width:9px;height:9px;border-radius:3px;flex:none;align-self:center}
+.drow .k{color:var(--muted);width:74px;flex:none}
+.drow .u{color:var(--muted);font-size:.76rem}
+.drow .v{margin-left:auto;font-weight:600}
+.recbtns{display:flex;gap:8px;margin-top:11px}
+.sbtn{
+  flex:1;height:36px;border-radius:10px;border:1px solid var(--line);
+  background:var(--bg);color:var(--ink);font-size:.88rem;cursor:pointer;font-weight:500;
+}
+.sbtn.del{color:var(--danger)}
+.empty{text-align:center;color:var(--muted);padding:36px 0;font-size:.9rem}
+
+/* modal */
+.mask{
+  position:fixed;inset:0;background:rgba(61,57,52,.42);z-index:50;
+  display:flex;align-items:flex-end;justify-content:center;
+}
+@media(min-width:600px){.mask{align-items:center}}
+.modal{
+  background:var(--card);width:100%;max-width:560px;max-height:92vh;overflow-y:auto;
+  border-radius:20px 20px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom));
+}
+@media(min-width:600px){.modal{border-radius:20px}}
+.modal h3{font-size:1.08rem;margin-bottom:16px}
+.fgroup{margin-bottom:13px}
+.fgroup label{display:flex;align-items:center;gap:7px;font-size:.82rem;color:var(--muted);margin-bottom:6px}
+.fgroup label .dot{width:9px;height:9px;border-radius:3px}
+.frow{display:flex;gap:8px;align-items:center}
+.fgroup input{
+  flex:1;height:44px;border:1px solid var(--line);border-radius:11px;background:#fff;
+  padding:0 13px;font-size:1rem;color:var(--ink);outline:none;width:100%;min-width:0;
+}
+.fgroup input:focus{border-color:var(--accent)}
+.brick{
+  flex:none;height:44px;padding:0 12px;border-radius:11px;border:1px dashed var(--line);
+  background:var(--bg);color:var(--muted);font-size:.8rem;cursor:pointer;white-space:nowrap;
+}
+.brick:active{background:var(--line)}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.mbtns{display:flex;gap:10px;margin-top:18px}
+.mbtns .cancel{
+  flex:1;height:46px;border-radius:12px;border:1px solid var(--line);background:var(--bg);
+  color:var(--ink);font-size:.95rem;cursor:pointer;
+}
+.mbtns .save{
+  flex:2;height:46px;border-radius:12px;border:none;background:var(--accent);
+  color:var(--accent-ink);font-size:.95rem;font-weight:600;cursor:pointer;
+}
+.mbtns .save:disabled{opacity:.55}
+
+/* toast & loading */
+.toast{
+  position:fixed;left:50%;bottom:28px;transform:translateX(-50%);
+  background:var(--ink);color:#F4F2ED;padding:11px 20px;border-radius:12px;
+  font-size:.9rem;z-index:80;box-shadow:0 6px 18px rgba(0,0,0,.18);white-space:nowrap;
+}
+.loading{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  color:var(--muted);padding:46px 0;font-size:.9rem;
+}
+.ring{
+  width:20px;height:20px;border:2.5px solid var(--line);border-top-color:var(--accent);
+  border-radius:50%;animation:spin .8s linear infinite;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <h1>租屋費用</h1>
+    <span class="sub num" id="recCount"></span>
+    <div class="actions">
+      <button class="iconbtn" id="btnRefresh" title="重新整理">&#8635;</button>
+      <button class="btn-primary" id="btnAdd">＋ 新增</button>
+    </div>
+  </div>
+
+  <div class="chips" id="periodChips"></div>
+
+  <div id="statsArea" style="display:none">
+    <div class="stats" id="statCards"></div>
+
+    <div class="card">
+      <h2>費用構成</h2>
+      <div id="catList"></div>
+    </div>
+
+    <div class="card">
+      <h2>每月合計</h2>
+      <div class="chartScroll"><div class="chart" id="chart"></div></div>
+    </div>
+  </div>
+
+  <div class="search">
+    <span class="ic">&#128269;</span>
+    <input type="search" id="searchInput" placeholder="搜尋年月,例如 2026 或 202605" inputmode="numeric">
+  </div>
+
+  <div id="listArea"><div class="loading"><div class="ring"></div>載入中…</div></div>
+</div>
+
+<!-- 新增 / 編輯彈窗 -->
+<div class="mask" id="modalMask" style="display:none">
+  <div class="modal">
+    <h3 id="modalTitle">新增紀錄</h3>
+
+    <div class="fgroup">
+      <label>名稱(年月)</label>
+      <div class="frow">
+        <input type="text" id="f_name" inputmode="numeric" placeholder="例:202607" maxlength="6">
+      </div>
+    </div>
+
+    <div id="costFields"></div>
+
+    <div class="fgroup">
+      <label>燈油購買日期</label>
+      <div class="frow"><input type="date" id="f_date"></div>
+    </div>
+
+    <div class="fgrid" id="usageFields"></div>
+
+    <div class="mbtns">
+      <button class="cancel" id="btnCancel">取消</button>
+      <button class="save" id="btnSave">儲存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ================= 設定 =================
+var API = '/api/notion';
+var CACHE_KEY = 'rent_cache_v1';
+var CACHE_TTL = 5 * 60 * 1000; // 5 分鐘
+
+var COST_FIELDS = [
+  { key: '電費',     cssVar: '--c-elec'   },
+  { key: '水費',     cssVar: '--c-water'  },
+  { key: '瓦斯費',   cssVar: '--c-gas'    },
+  { key: '樂天通信', cssVar: '--c-mobile' },
+  { key: '燈油',     cssVar: '--c-oil'    }
+];
+var USAGE_FIELDS = [
+  { key: '電kWh',  unit: 'kWh', pair: '電費'   },
+  { key: '水m3',   unit: 'm³',  pair: '水費'   },
+  { key: '瓦斯m3', unit: 'm³',  pair: '瓦斯費' }
+];
+var PERIODS = [
+  { id: 'thisYear', label: '今年' },
+  { id: 'lastYear', label: '去年' },
+  { id: 'last12',   label: '近12個月' },
+  { id: 'all',      label: '全部' }
+];
+
+// ================= 狀態 =================
+var allRecords = [];        // 解析後的紀錄,依 ym 遞減
+var currentPeriod = 'thisYear';
+var searchText = '';
+var openIds = {};           // 展開中的紀錄 id
+var editingId = null;       // null = 新增模式
+
+// ================= 工具 =================
+function yen(n) {
+  if (n === null || n === undefined) return '—';
+  return '¥' + Math.round(n).toLocaleString('ja-JP');
+}
+function cssColor(v) {
+  return getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+}
+function ymLabel(ym) {
+  var s = String(ym);
+  return s.slice(0, 4) + '年' + parseInt(s.slice(4, 6), 10) + '月';
+}
+function nextYm(ym) {
+  var y = Math.floor(ym / 100), m = ym % 100;
+  m++; if (m > 12) { m = 1; y++; }
+  return y * 100 + m;
+}
+function prevYm(ym) {
+  var y = Math.floor(ym / 100), m = ym % 100;
+  m--; if (m < 1) { m = 12; y--; }
+  return y * 100 + m;
+}
+function recTotal(r) {
+  if (typeof r['合計'] === 'number') return r['合計'];
+  var s = 0, has = false;
+  COST_FIELDS.forEach(function (f) {
+    if (typeof r[f.key] === 'number') { s += r[f.key]; has = true; }
+  });
+  return has ? s : null;
+}
+function showToast(msg) {
+  var t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function () { t.remove(); }, 2200);
+}
+
+// ================= API =================
+function callApi(action, payload) {
+  return fetch(API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    cache: 'no-store',
+    body: JSON.stringify({ action: action, payload: payload || {} })
+  }).then(function (r) {
+    return r.json().then(function (d) {
+      if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+      return d;
+    });
+  });
+}
+
+function parsePage(page) {
+  var p = page.properties || {};
+  var rec = { id: page.id };
+  var titleProp = p['名稱'];
+  rec.name = (titleProp && titleProp.title && titleProp.title.length)
+    ? titleProp.title.map(function (t) { return t.plain_text; }).join('')
+    : '';
+  rec.ym = /^\d{6}$/.test(rec.name) ? parseInt(rec.name, 10) : null;
+  COST_FIELDS.forEach(function (f) {
+    rec[f.key] = (p[f.key] && typeof p[f.key].number === 'number') ? p[f.key].number : null;
+  });
+  USAGE_FIELDS.forEach(function (f) {
+    rec[f.key] = (p[f.key] && typeof p[f.key].number === 'number') ? p[f.key].number : null;
+  });
+  rec['合計'] = (p['合計'] && p['合計'].formula && typeof p['合計'].formula.number === 'number')
+    ? p['合計'].formula.number : null;
+  rec['購買日期'] = (p['購買日期'] && p['購買日期'].date) ? p['購買日期'].date.start : null;
+  return rec;
+}
+
+function loadRecords(force) {
+  if (!force) {
+    try {
+      var c = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+      if (c && Date.now() - c.ts < CACHE_TTL && Array.isArray(c.records)) {
+        allRecords = c.records;
+        renderAll();
+        return Promise.resolve();
+      }
+    } catch (e) {}
+  }
+  return callApi('query').then(function (d) {
+    allRecords = (d.results || []).map(parsePage)
+      .sort(function (a, b) { return (b.ym || 0) - (a.ym || 0); });
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), records: allRecords }));
+    } catch (e) {}
+    renderAll();
+  }).catch(function (e) {
+    document.getElementById('listArea').innerHTML =
+      '<div class="empty">載入失敗:' + e.message + '<br>請確認 Vercel 環境變數與 Notion 分享設定</div>';
+  });
+}
+function clearCache() { try { localStorage.removeItem(CACHE_KEY); } catch (e) {} }
+
+// ================= 期間篩選 =================
+function filteredRecords() {
+  var now = new Date();
+  var thisY = now.getFullYear();
+  var curYm = thisY * 100 + (now.getMonth() + 1);
+  var list = allRecords.filter(function (r) { return r.ym !== null; });
+  if (currentPeriod === 'thisYear') {
+    return list.filter(function (r) { return Math.floor(r.ym / 100) === thisY; });
+  }
+  if (currentPeriod === 'lastYear') {
+    return list.filter(function (r) { return Math.floor(r.ym / 100) === thisY - 1; });
+  }
+  if (currentPeriod === 'last12') {
+    var th = curYm;
+    for (var i = 0; i < 11; i++) th = prevYm(th);
+    return list.filter(function (r) { return r.ym >= th && r.ym <= curYm; });
+  }
+  return list;
+}
+
+// ================= 渲染 =================
+function renderAll() {
+  renderChips();
+  renderStats();
+  renderList();
+  document.getElementById('recCount').textContent = allRecords.length ? allRecords.length + ' 筆' : '';
+}
+
+function renderChips() {
+  var box = document.getElementById('periodChips');
+  box.innerHTML = '';
+  PERIODS.forEach(function (p) {
+    var b = document.createElement('button');
+    b.className = 'chip' + (p.id === currentPeriod ? ' on' : '');
+    b.textContent = p.label;
+    b.onclick = function () { currentPeriod = p.id; renderAll(); };
+    box.appendChild(b);
+  });
+}
+
+function renderStats() {
+  var recs = filteredRecords();
+  var area = document.getElementById('statsArea');
+  if (!recs.length) { area.style.display = 'none'; return; }
+  area.style.display = '';
+
+  var totals = recs.map(function (r) { return { r: r, t: recTotal(r) }; })
+    .filter(function (x) { return x.t !== null; });
+  var sum = totals.reduce(function (s, x) { return s + x.t; }, 0);
+  var avg = totals.length ? sum / totals.length : 0;
+  var latest = recs[0];
+  var maxX = totals.reduce(function (m, x) { return (!m || x.t > m.t) ? x : m; }, null);
+
+  var cards = [
+    { lb: '最新月份(' + ymLabel(latest.ym) + ')', v: yen(recTotal(latest)) },
+    { lb: '期間累計', v: yen(sum) },
+    { lb: '月平均', v: yen(avg) },
+    { lb: '最高月份', v: maxX ? yen(maxX.t) : '—', s: maxX ? ymLabel(maxX.r.ym) : '' }
+  ];
+  document.getElementById('statCards').innerHTML = cards.map(function (c) {
+    return '<div class="stat"><div class="lb">' + c.lb + '</div>' +
+      '<div class="v num">' + c.v + (c.s ? '<small>' + c.s + '</small>' : '') + '</div></div>';
+  }).join('');
+
+  // 費用構成
+  var catBox = document.getElementById('catList');
+  var catSums = COST_FIELDS.map(function (f) {
+    var s = recs.reduce(function (acc, r) { return acc + (typeof r[f.key] === 'number' ? r[f.key] : 0); }, 0);
+    return { key: f.key, cssVar: f.cssVar, sum: s };
+  });
+  var catTotal = catSums.reduce(function (s, c) { return s + c.sum; }, 0) || 1;
+  var catMax = Math.max.apply(null, catSums.map(function (c) { return c.sum; })) || 1;
+  catBox.innerHTML = catSums.map(function (c) {
+    var color = cssColor(c.cssVar);
+    var pct = c.sum / catTotal * 100;
+    return '<div class="cat">' +
+      '<span class="dot" style="background:' + color + '"></span>' +
+      '<span class="nm">' + c.key + '</span>' +
+      '<span class="track"><span class="fill" style="width:' + (c.sum / catMax * 100).toFixed(1) + '%;background:' + color + '"></span></span>' +
+      '<span class="amt num">' + yen(c.sum) + '</span>' +
+      '<span class="pct num">' + pct.toFixed(1) + '%</span>' +
+      '</div>';
+  }).join('');
+
+  // 堆疊長條圖(升冪,最多 24 個月)
+  var asc = recs.slice().sort(function (a, b) { return a.ym - b.ym; }).slice(-24);
+  var maxT = Math.max.apply(null, asc.map(function (r) { return recTotal(r) || 0; })) || 1;
+  var H = 108;
+  document.getElementById('chart').innerHTML = asc.map(function (r) {
+    var t = recTotal(r) || 0;
+    var barH = Math.max(3, Math.round(t / maxT * H));
+    var segs = COST_FIELDS.map(function (f) {
+      var v = typeof r[f.key] === 'number' ? r[f.key] : 0;
+      if (v <= 0 || t <= 0) return '';
+      var h = Math.max(1, Math.round(v / t * barH));
+      return '<span class="seg" style="height:' + h + 'px;background:' + cssColor(f.cssVar) + '"></span>';
+    }).join('');
+    var m = r.ym % 100, y = Math.floor(r.ym / 100);
+    var showYear = (m === 1 || r.ym === asc[0].ym);
+    return '<div class="col" title="' + ymLabel(r.ym) + ' ' + yen(t) + '">' +
+      '<div class="bar" style="height:' + barH + 'px">' + segs + '</div>' +
+      '<span class="m num">' + m + '月</span>' +
+      '<span class="y num">' + (showYear ? String(y).slice(2) + '年' : '') + '</span>' +
+      '</div>';
+  }).join('');
+}
+
+function renderList() {
+  var recs = filteredRecords();
+  if (searchText) {
+    recs = recs.filter(function (r) {
+      return r.name.indexOf(searchText) !== -1 || ymLabel(r.ym).indexOf(searchText) !== -1;
+    });
+  }
+  var box = document.getElementById('listArea');
+  if (!recs.length) {
+    box.innerHTML = '<div class="empty">' + (searchText ? '找不到符合的紀錄' : '這個期間沒有紀錄,點右上「＋ 新增」建立') + '</div>';
+    return;
+  }
+  box.innerHTML = '';
+  recs.forEach(function (r) {
+    var div = document.createElement('div');
+    var isOpen = !!openIds[r.id];
+    div.className = 'rec' + (isOpen ? ' open' : '');
+
+    var head = document.createElement('div');
+    head.className = 'head';
+    head.innerHTML = '<span class="arrow">▶</span>' +
+      '<span class="ym num">' + ymLabel(r.ym) + '</span>' +
+      '<span class="total num">' + yen(recTotal(r)) + '</span>';
+    head.onclick = function () {
+      if (openIds[r.id]) delete openIds[r.id]; else openIds[r.id] = true;
+      renderList();
+    };
+    div.appendChild(head);
+
+    if (isOpen) {
+      var body = document.createElement('div');
+      body.className = 'body';
+      var rows = COST_FIELDS.map(function (f) {
+        var usage = USAGE_FIELDS.filter(function (u) { return u.pair === f.key; })[0];
+        var uTxt = '';
+        if (usage && typeof r[usage.key] === 'number') {
+          uTxt = r[usage.key] + ' ' + usage.unit;
+          if (typeof r[f.key] === 'number' && r[usage.key] > 0) {
+            uTxt += '・¥' + (r[f.key] / r[usage.key]).toFixed(1) + '/' + usage.unit;
+          }
+        }
+        if (f.key === '燈油' && r['購買日期']) {
+          uTxt = (uTxt ? uTxt + '・' : '') + r['購買日期'];
+        }
+        return '<div class="drow">' +
+          '<span class="dot" style="background:' + cssColor(f.cssVar) + '"></span>' +
+          '<span class="k">' + f.key + '</span>' +
+          (uTxt ? '<span class="u num">' + uTxt + '</span>' : '') +
+          '<span class="v num">' + yen(r[f.key]) + '</span>' +
+          '</div>';
+      }).join('');
+      body.innerHTML = rows +
+        '<div class="recbtns">' +
+        '<button class="sbtn edit">編輯</button>' +
+        '<button class="sbtn del">刪除</button>' +
+        '</div>';
+      body.querySelector('.edit').onclick = function () { openModal(r.id); };
+      body.querySelector('.del').onclick = function () { deleteRecord(r); };
+      div.appendChild(body);
+    }
+    box.appendChild(div);
+  });
+}
+
+// ================= 新增 / 編輯 =================
+function buildModalFields() {
+  var costBox = document.getElementById('costFields');
+  costBox.innerHTML = COST_FIELDS.map(function (f) {
+    return '<div class="fgroup">' +
+      '<label><span class="dot" style="background:' + cssColor(f.cssVar) + '"></span>' + f.key + '</label>' +
+      '<div class="frow">' +
+      '<input type="number" inputmode="decimal" id="f_' + f.key + '" placeholder="¥">' +
+      '<button class="brick" type="button" data-field="' + f.key + '" style="display:none"></button>' +
+      '</div></div>';
+  }).join('');
+  var usageBox = document.getElementById('usageFields');
+  usageBox.innerHTML = USAGE_FIELDS.map(function (f) {
+    return '<div class="fgroup">' +
+      '<label>' + f.key + '</label>' +
+      '<div class="frow">' +
+      '<input type="number" inputmode="decimal" id="f_' + f.key + '" placeholder="' + f.unit + '">' +
+      '</div></div>';
+  }).join('');
+}
+
+function openModal(pageId) {
+  editingId = pageId || null;
+  buildModalFields();
+  var rec = editingId ? allRecords.filter(function (r) { return r.id === editingId; })[0] : null;
+
+  document.getElementById('modalTitle').textContent = editingId ? '編輯紀錄' : '新增紀錄';
+
+  // 名稱:編輯時帶原值;新增時自動帶下一個年月
+  var nameInput = document.getElementById('f_name');
+  if (rec) {
+    nameInput.value = rec.name;
+  } else {
+    var latest = allRecords.filter(function (r) { return r.ym !== null; })[0];
+    nameInput.value = latest ? String(nextYm(latest.ym)) : '';
+  }
+
+  // 數值欄位
+  COST_FIELDS.concat(USAGE_FIELDS).forEach(function (f) {
+    var el = document.getElementById('f_' + f.key);
+    el.value = (rec && typeof rec[f.key] === 'number') ? rec[f.key] : '';
+  });
+  document.getElementById('f_date').value = (rec && rec['購買日期']) ? rec['購買日期'] : '';
+
+  // 上月數值磚塊:新增 → 最新一筆;編輯 → 該筆的前一個月
+  var baseYm = rec ? rec.ym : null;
+  var prevRec = null;
+  if (rec && baseYm) {
+    prevRec = allRecords.filter(function (r) { return r.ym !== null && r.ym < baseYm; })[0] || null;
+  } else {
+    prevRec = allRecords.filter(function (r) { return r.ym !== null; })[0] || null;
+  }
+  document.querySelectorAll('#costFields .brick').forEach(function (b) {
+    var key = b.getAttribute('data-field');
+    if (prevRec && typeof prevRec[key] === 'number') {
+      b.style.display = '';
+      b.textContent = '上月 ' + yen(prevRec[key]);
+      b.onclick = function () { document.getElementById('f_' + key).value = prevRec[key]; };
+    } else {
+      b.style.display = 'none';
+    }
+  });
+
+  document.getElementById('modalMask').style.display = 'flex';
+}
+
+function closeModal() {
+  document.getElementById('modalMask').style.display = 'none';
+  editingId = null;
+}
+
+function saveRecord() {
+  var name = document.getElementById('f_name').value.trim();
+  if (!/^\d{6}$/.test(name)) { showToast('名稱請輸入 6 位年月,例如 202607'); return; }
+
+  var props = { '名稱': { title: [{ text: { content: name } }] } };
+  COST_FIELDS.concat(USAGE_FIELDS).forEach(function (f) {
+    var v = document.getElementById('f_' + f.key).value;
+    if (v !== '') {
+      props[f.key] = { number: parseFloat(v) };
+    } else if (editingId) {
+      props[f.key] = { number: null }; // 編輯時允許清空
+    }
+  });
+  var d = document.getElementById('f_date').value;
+  if (d) props['購買日期'] = { date: { start: d } };
+  else if (editingId) props['購買日期'] = { date: null };
+
+  var btn = document.getElementById('btnSave');
+  btn.disabled = true; btn.textContent = '儲存中…';
+
+  var p = editingId
+    ? callApi('update', { pageId: editingId, properties: props })
+    : callApi('create', { properties: props });
+
+  p.then(function () {
+    closeModal();
+    showToast(editingId ? '已更新 ' + name : '已新增 ' + name);
+    clearCache();
+    // Notion 索引延遲:新增後等 1.5 秒再查詢
+    var delay = editingId ? 500 : 1500;
+    setTimeout(function () { loadRecords(true); }, delay);
+  }).catch(function (e) {
+    showToast('儲存失敗:' + e.message);
+  }).finally(function () {
+    btn.disabled = false; btn.textContent = '儲存';
+  });
+}
+
+function deleteRecord(rec) {
+  if (!confirm('確定刪除 ' + ymLabel(rec.ym) + ' 的紀錄?')) return;
+  callApi('delete', { pageId: rec.id }).then(function () {
+    showToast('已刪除 ' + rec.name);
+    clearCache();
+    delete openIds[rec.id];
+    setTimeout(function () { loadRecords(true); }, 500);
+  }).catch(function (e) {
+    showToast('刪除失敗:' + e.message);
+  });
+}
+
+// ================= 事件綁定 =================
+document.getElementById('btnAdd').onclick = function () { openModal(null); };
+document.getElementById('btnCancel').onclick = closeModal;
+document.getElementById('btnSave').onclick = saveRecord;
+document.getElementById('modalMask').onclick = function (e) {
+  if (e.target === this) closeModal();
+};
+document.getElementById('btnRefresh').onclick = function () {
+  var b = this;
+  b.classList.add('spinning');
+  clearCache();
+  loadRecords(true).then(function () { b.classList.remove('spinning'); });
+};
+document.getElementById('searchInput').oninput = function () {
+  searchText = this.value.trim();
+  renderList();
+};
+
+// ================= 啟動 =================
+loadRecords(false);
+</script>
+</body>
+</html>
