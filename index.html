@@ -14,6 +14,7 @@
   --accent:#7E96A0;
   --accent-ink:#F6F8F8;
   --danger:#B4776C;
+  --ok:#7C9473;
   --c-elec:#C8A15A;
   --c-water:#7E96A0;
   --c-gas:#C0826C;
@@ -32,7 +33,7 @@ body{
 .num{font-variant-numeric:tabular-nums}
 
 /* page tabs */
-.ptabs{display:flex;gap:6px;padding:4px 2px 2px}
+.ptabs{display:flex;gap:6px;padding:4px 2px 2px;flex-wrap:wrap}
 .ptab{
   text-decoration:none;color:var(--muted);font-size:.9rem;font-weight:600;
   padding:8px 14px;border-radius:10px 10px 0 0;
@@ -102,6 +103,40 @@ body{
 .seg{width:100%}
 .col .m{font-size:.66rem;color:var(--muted);white-space:nowrap}
 .col .y{font-size:.6rem;color:var(--muted);opacity:.75;white-space:nowrap;height:.8em}
+
+/* usage analysis */
+.uToggle{display:flex;gap:7px;margin-bottom:14px}
+.uToggle button{
+  flex:1;border:1px solid var(--line);background:var(--bg);color:var(--muted);
+  padding:8px 4px;border-radius:10px;font-size:.85rem;font-weight:600;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+}
+.uToggle button .sub{font-size:.68rem;font-weight:400}
+.uToggle button.on{color:#F4F2ED;border-color:transparent}
+.uSummary{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px}
+.uSummary .box{background:var(--bg);border-radius:11px;padding:10px 6px;text-align:center}
+.uSummary .box .lb{font-size:.68rem;color:var(--muted);margin-bottom:3px}
+.uSummary .box .v{font-size:1.02rem;font-weight:700}
+.uSummary .box .v small{font-size:.64rem;font-weight:400;color:var(--muted)}
+.uchart{display:flex;align-items:flex-end;gap:7px;height:150px;min-width:100%;width:max-content;padding-top:14px;position:relative}
+.ucol{display:flex;flex-direction:column;align-items:center;gap:5px;width:34px;flex:none}
+.ubarwrap{position:relative;display:flex;align-items:flex-end;height:118px}
+.ubar{width:20px;border-radius:5px 5px 0 0;position:relative}
+.ubar .tip{
+  position:absolute;top:-13px;left:50%;transform:translateX(-50%);
+  font-size:.6rem;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums;
+}
+.uavg{position:absolute;left:0;right:0;border-top:1.5px dashed var(--muted);opacity:.55;pointer-events:none}
+.uavg .lab{position:absolute;right:0;top:-14px;font-size:.6rem;color:var(--muted);background:var(--card);padding:0 3px}
+.uInsight{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+.insight{
+  display:flex;gap:9px;align-items:flex-start;background:var(--bg);
+  border-radius:11px;padding:10px 12px;font-size:.84rem;line-height:1.5;
+}
+.insight .ic{flex:none;font-size:.95rem;margin-top:1px}
+.insight b{font-weight:700}
+.insight .up{color:var(--danger)}
+.insight .down{color:var(--ok)}
 
 /* search */
 .search{position:relative;margin-bottom:12px}
@@ -197,6 +232,7 @@ body{
     <a class="ptab on" href="index.html">租屋費用</a>
     <a class="ptab" href="tax.html">稅金</a>
     <a class="ptab" href="salary.html">薪資</a>
+    <a class="ptab" href="setup.html">設定檢查</a>
   </div>
 
   <div class="topbar">
@@ -221,6 +257,14 @@ body{
     <div class="card">
       <h2>每月合計</h2>
       <div class="chartScroll"><div class="chart" id="chart"></div></div>
+    </div>
+
+    <div class="card">
+      <h2>用量分析</h2>
+      <div class="uToggle" id="uToggle"></div>
+      <div class="uSummary" id="uSummary"></div>
+      <div class="chartScroll"><div class="uchart" id="uchart"></div></div>
+      <div class="uInsight" id="uInsight"></div>
     </div>
   </div>
 
@@ -274,10 +318,11 @@ var COST_FIELDS = [
   { key: '燈油',     cssVar: '--c-oil'    }
 ];
 var USAGE_FIELDS = [
-  { key: '電kWh',  unit: 'kWh', pair: '電費'   },
-  { key: '水m3',   unit: 'm³',  pair: '水費'   },
-  { key: '瓦斯m3', unit: 'm³',  pair: '瓦斯費' }
+  { key: '電kWh',  unit: 'kWh', pair: '電費',   cssVar: '--c-elec',  label: '電'   },
+  { key: '水m3',   unit: 'm³',  pair: '水費',   cssVar: '--c-water', label: '水'   },
+  { key: '瓦斯m3', unit: 'm³',  pair: '瓦斯費', cssVar: '--c-gas',   label: '瓦斯' }
 ];
+var currentUsage = '電kWh'; // 用量分析目前選的項目
 var PERIODS = [
   { id: 'thisYear', label: '今年' },
   { id: 'lastYear', label: '去年' },
@@ -495,7 +540,164 @@ function renderStats() {
       '<span class="y num">' + (showYear ? String(y).slice(2) + '年' : '') + '</span>' +
       '</div>';
   }).join('');
+
+  renderUsage(recs);
 }
+
+// ================= 用量分析 =================
+function renderUsage(recs) {
+  var uf = USAGE_FIELDS.filter(function (f) { return f.key === currentUsage; })[0] || USAGE_FIELDS[0];
+  var color = cssColor(uf.cssVar);
+
+  // 切換按鈕
+  document.getElementById('uToggle').innerHTML = USAGE_FIELDS.map(function (f) {
+    var c = cssColor(f.cssVar);
+    var on = f.key === currentUsage;
+    return '<button class="' + (on ? 'on' : '') + '" data-k="' + f.key + '"' +
+      (on ? ' style="background:' + c + '"' : '') + '>' +
+      f.label + '<span class="sub">' + f.unit + '</span></button>';
+  }).join('');
+  document.querySelectorAll('#uToggle button').forEach(function (b) {
+    b.onclick = function () { currentUsage = b.getAttribute('data-k'); renderUsage(filteredRecords()); };
+  });
+
+  // 有效資料(該項用量為數字),依月份升冪
+  var data = recs.filter(function (r) { return typeof r[uf.key] === 'number'; })
+    .slice().sort(function (a, b) { return a.ym - b.ym; });
+
+  var summaryBox = document.getElementById('uSummary');
+  var chartBox = document.getElementById('uchart');
+  var insightBox = document.getElementById('uInsight');
+
+  if (!data.length) {
+    summaryBox.innerHTML = '';
+    chartBox.innerHTML = '<div style="color:var(--muted);font-size:.85rem;padding:20px 0">此期間沒有' + uf.label + '用量資料</div>';
+    insightBox.innerHTML = '';
+    return;
+  }
+
+  var usages = data.map(function (r) { return r[uf.key]; });
+  var total = usages.reduce(function (s, v) { return s + v; }, 0);
+  var avg = total / usages.length;
+  var maxU = Math.max.apply(null, usages);
+  var minU = Math.min.apply(null, usages);
+
+  // 平均單價:總費用 / 總用量
+  var costSum = data.reduce(function (s, r) { return s + (typeof r[uf.pair] === 'number' ? r[uf.pair] : 0); }, 0);
+  var unitPrice = total > 0 ? costSum / total : 0;
+
+  // 摘要三格
+  summaryBox.innerHTML =
+    box('月均用量', avg.toFixed(1), uf.unit) +
+    box('期間總用量', Math.round(total).toLocaleString(), uf.unit) +
+    box('平均單價', '¥' + unitPrice.toFixed(1), '/' + uf.unit);
+
+  function box(lb, v, small) {
+    return '<div class="box"><div class="lb">' + lb + '</div>' +
+      '<div class="v num">' + v + '<small> ' + small + '</small></div></div>';
+  }
+
+  // 長條圖(升冪,最多 24 個月),含平均虛線
+  var show = data.slice(-24);
+  var maxShow = Math.max.apply(null, show.map(function (r) { return r[uf.key]; })) || 1;
+  var barMaxH = 108;
+  var avgY = barMaxH * (avg / maxShow);
+
+  var bars = show.map(function (r) {
+    var v = r[uf.key];
+    var h = Math.max(2, Math.round(v / maxShow * barMaxH));
+    var m = r.ym % 100, y = Math.floor(r.ym / 100);
+    var showYear = (m === 1 || r.ym === show[0].ym);
+    var isMax = v === maxU, isMin = v === minU;
+    var barColor = color;
+    return '<div class="ucol">' +
+      '<div class="ubarwrap">' +
+      '<div class="ubar" style="height:' + h + 'px;background:' + barColor + (isMax ? '' : ';opacity:.82') + '">' +
+      '<span class="tip num">' + (v % 1 === 0 ? v : v.toFixed(1)) + '</span>' +
+      '</div></div>' +
+      '<span class="m num">' + m + '月</span>' +
+      '<span class="y num">' + (showYear ? String(y).slice(2) + '年' : '') + '</span>' +
+      '</div>';
+  }).join('');
+  chartBox.innerHTML =
+    '<div class="uavg" style="bottom:' + (avgY + 22) + 'px"><span class="lab num">均 ' + avg.toFixed(1) + '</span></div>' +
+    bars;
+
+  // 綜合分析文字
+  insightBox.innerHTML = buildInsights(data, uf, avg, unitPrice);
+}
+
+function buildInsights(data, uf, avg, unitPrice) {
+  var out = [];
+
+  // 1. 最近月份 vs 前一月
+  if (data.length >= 2) {
+    var last = data[data.length - 1];
+    var prev = data[data.length - 2];
+    var lv = last[uf.key], pv = prev[uf.key];
+    if (pv > 0) {
+      var diff = (lv - pv) / pv * 100;
+      var dir = diff >= 0 ? 'up' : 'down';
+      var arrow = diff >= 0 ? '▲' : '▼';
+      out.push(insight('📊',
+        ymLabel(last.ym) + '的' + uf.label + '用量為 <b>' + fmtU(lv) + ' ' + uf.unit + '</b>,' +
+        '較上月 <span class="' + dir + '">' + arrow + ' ' + Math.abs(diff).toFixed(1) + '%</span>'));
+    }
+  }
+
+  // 2. 最近月份 vs 去年同月
+  var last2 = data[data.length - 1];
+  var sameLastYear = data.filter(function (r) {
+    return r.ym === last2.ym - 100;
+  })[0];
+  if (sameLastYear && sameLastYear[uf.key] > 0) {
+    var yoy = (last2[uf.key] - sameLastYear[uf.key]) / sameLastYear[uf.key] * 100;
+    var ydir = yoy >= 0 ? 'up' : 'down';
+    var yarrow = yoy >= 0 ? '▲' : '▼';
+    out.push(insight('📅',
+      '與去年同月(' + ymLabel(sameLastYear.ym) + ' ' + fmtU(sameLastYear[uf.key]) + ' ' + uf.unit + ')相比,' +
+      '<span class="' + ydir + '">' + yarrow + ' ' + Math.abs(yoy).toFixed(1) + '%</span>'));
+  }
+
+  // 3. 最高 / 最低月份
+  var sorted = data.slice().sort(function (a, b) { return b[uf.key] - a[uf.key]; });
+  var hi = sorted[0], lo = sorted[sorted.length - 1];
+  out.push(insight('🔺',
+    '用量最高 <b>' + ymLabel(hi.ym) + '</b>(' + fmtU(hi[uf.key]) + ' ' + uf.unit + '),' +
+    '最低 <b>' + ymLabel(lo.ym) + '</b>(' + fmtU(lo[uf.key]) + ' ' + uf.unit + ')'));
+
+  // 4. 季節傾向:比較夏季(6-9月)與冬季(12-2月)平均
+  var summer = data.filter(function (r) { var m = r.ym % 100; return m >= 6 && m <= 9; });
+  var winter = data.filter(function (r) { var m = r.ym % 100; return m === 12 || m <= 2; });
+  if (summer.length && winter.length) {
+    var sAvg = summer.reduce(function (s, r) { return s + r[uf.key]; }, 0) / summer.length;
+    var wAvg = winter.reduce(function (s, r) { return s + r[uf.key]; }, 0) / winter.length;
+    var hint = '';
+    if (uf.key === '電kWh') {
+      hint = sAvg > wAvg ? '(夏季冷氣用電較高)' : '(冬季暖氣/電暖用電較高)';
+    } else if (uf.key === '瓦斯m3') {
+      hint = wAvg > sAvg ? '(冬季熱水/暖氣瓦斯較高)' : '';
+    }
+    var hiSeason = sAvg >= wAvg ? '夏季' : '冬季';
+    var hiv = Math.max(sAvg, wAvg), lov = Math.min(sAvg, wAvg);
+    var gap = lov > 0 ? ((hiv - lov) / lov * 100).toFixed(0) : '—';
+    out.push(insight('🌡️',
+      hiSeason + '平均用量較高:夏季 ' + sAvg.toFixed(1) + '、冬季 ' + wAvg.toFixed(1) + ' ' + uf.unit +
+      '(差 ' + gap + '%)' + hint));
+  }
+
+  // 5. 單價提示
+  out.push(insight('💰',
+    uf.label + '平均單價 <b>¥' + unitPrice.toFixed(1) + '/' + uf.unit + '</b>,' +
+    '此期間共 ' + data.length + ' 個月有紀錄'));
+
+  return out.join('');
+}
+
+function insight(ic, html) {
+  return '<div class="insight"><span class="ic">' + ic + '</span><span>' + html + '</span></div>';
+}
+function fmtU(v) { return v % 1 === 0 ? String(v) : v.toFixed(1); }
 
 function renderList() {
   var recs = filteredRecords();
