@@ -32,7 +32,7 @@ body{
 .num{font-variant-numeric:tabular-nums}
 
 /* page tabs */
-.ptabs{display:flex;gap:6px;padding:4px 2px 2px}
+.ptabs{display:flex;gap:6px;padding:4px 2px 2px;flex-wrap:wrap}
 .ptab{
   text-decoration:none;color:var(--muted);font-size:.9rem;font-weight:600;
   padding:8px 14px;border-radius:10px 10px 0 0;
@@ -198,9 +198,10 @@ body{
 <div class="wrap">
 
   <div class="ptabs">
-    <a class="ptab" href="index.html">租屋費用</a>
-    <a class="ptab on" href="tax.html">稅金</a>
-    <a class="ptab" href="salary.html">薪資</a>
+    <a class="ptab" href="index">租屋費用</a>
+    <a class="ptab on" href="tax">稅金</a>
+    <a class="ptab" href="salary">薪資</a>
+    <a class="ptab" href="setup">設定檢查</a>
   </div>
 
   <div class="topbar">

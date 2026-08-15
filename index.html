@@ -118,14 +118,16 @@ body{
 .uSummary .box .lb{font-size:.68rem;color:var(--muted);margin-bottom:3px}
 .uSummary .box .v{font-size:1.02rem;font-weight:700}
 .uSummary .box .v small{font-size:.64rem;font-weight:400;color:var(--muted)}
-.uchart{display:flex;align-items:flex-end;gap:7px;height:150px;min-width:100%;width:max-content;padding-top:14px;position:relative}
+.uchart{display:flex;align-items:flex-end;gap:7px;height:160px;min-width:100%;width:max-content;padding-top:14px;position:relative}
 .ucol{display:flex;flex-direction:column;align-items:center;gap:5px;width:34px;flex:none}
 .ubarwrap{position:relative;display:flex;align-items:flex-end;height:118px}
-.ubar{width:20px;border-radius:5px 5px 0 0;position:relative}
+.ubar{width:20px;border-radius:5px 5px 0 0;position:relative;min-height:2px}
 .ubar .tip{
   position:absolute;top:-13px;left:50%;transform:translateX(-50%);
   font-size:.6rem;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums;
 }
+.ucol .m{font-size:.66rem;color:var(--muted);white-space:nowrap;line-height:1.1;height:.9rem}
+.ucol .y{font-size:.6rem;color:var(--muted);opacity:.75;white-space:nowrap;line-height:1;height:.8rem}
 .uavg{position:absolute;left:0;right:0;border-top:1.5px dashed var(--muted);opacity:.55;pointer-events:none}
 .uavg .lab{position:absolute;right:0;top:-14px;font-size:.6rem;color:var(--muted);background:var(--card);padding:0 3px}
 .uInsight{margin-top:14px;display:flex;flex-direction:column;gap:8px}
@@ -229,10 +231,10 @@ body{
 <div class="wrap">
 
   <div class="ptabs">
-    <a class="ptab on" href="index.html">租屋費用</a>
-    <a class="ptab" href="tax.html">稅金</a>
-    <a class="ptab" href="salary.html">薪資</a>
-    <a class="ptab" href="setup.html">設定檢查</a>
+    <a class="ptab on" href="index">租屋費用</a>
+    <a class="ptab" href="tax">稅金</a>
+    <a class="ptab" href="salary">薪資</a>
+    <a class="ptab" href="setup">設定檢查</a>
   </div>
 
   <div class="topbar">
@@ -600,7 +602,8 @@ function renderUsage(recs) {
   // 長條圖(升冪,最多 24 個月),含平均虛線
   var show = data.slice(-24);
   var maxShow = Math.max.apply(null, show.map(function (r) { return r[uf.key]; })) || 1;
-  var barMaxH = 108;
+  var barMaxH = 108;       // 長條最大高度
+  var labelH = 32;         // 月份/年份標籤區高度(.m 0.9rem + .y 0.8rem + gap 5px)
   var avgY = barMaxH * (avg / maxShow);
 
   var bars = show.map(function (r) {
@@ -608,19 +611,19 @@ function renderUsage(recs) {
     var h = Math.max(2, Math.round(v / maxShow * barMaxH));
     var m = r.ym % 100, y = Math.floor(r.ym / 100);
     var showYear = (m === 1 || r.ym === show[0].ym);
-    var isMax = v === maxU, isMin = v === minU;
-    var barColor = color;
+    var isMax = v === maxU;
     return '<div class="ucol">' +
       '<div class="ubarwrap">' +
-      '<div class="ubar" style="height:' + h + 'px;background:' + barColor + (isMax ? '' : ';opacity:.82') + '">' +
-      '<span class="tip num">' + (v % 1 === 0 ? v : v.toFixed(1)) + '</span>' +
+      '<div class="ubar" style="height:' + h + 'px;background:' + color + (isMax ? '' : ';opacity:.82') + '">' +
+      '<span class="tip num">' + fmtU(v) + '</span>' +
       '</div></div>' +
       '<span class="m num">' + m + '月</span>' +
       '<span class="y num">' + (showYear ? String(y).slice(2) + '年' : '') + '</span>' +
       '</div>';
   }).join('');
+  // 平均線 bottom = 標籤高度 + 平均對應的長條高度(與長條共用同一基線)
   chartBox.innerHTML =
-    '<div class="uavg" style="bottom:' + (avgY + 22) + 'px"><span class="lab num">均 ' + avg.toFixed(1) + '</span></div>' +
+    '<div class="uavg" style="bottom:' + (labelH + avgY) + 'px"><span class="lab num">均 ' + fmtU(avg) + '</span></div>' +
     bars;
 
   // 綜合分析文字
