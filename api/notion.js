@@ -63,14 +63,15 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
-  if (!process.env.NOTION_TOKEN) {
+  if (!process.env.NOTION_TOKEN && (req.body || {}).action !== 'health') {
     res.status(500).json({ error: '缺少 NOTION_TOKEN 環境變數' });
     return;
   }
 
   const { action, db, payload } = req.body || {};
+
   const cfg = dbConfig(db || 'rent');
-  if (!cfg || !cfg.id) {
+  if (action !== 'health' && (!cfg || !cfg.id)) {
     res.status(500).json({ error: '缺少資料庫 ID 環境變數(db=' + (db || 'rent') + ')' });
     return;
   }
@@ -107,6 +108,38 @@ module.exports = async (req, res) => {
           body: JSON.stringify({ archived: true })
         });
         res.status(200).json(data);
+        return;
+      }
+      case 'health': {
+        // 三個資料庫的連線診斷(不需 db 參數)
+        const keys = ['rent', 'tax', 'salary'];
+        const names = { rent: '租屋費用', tax: '稅金', salary: '薪資' };
+        const envNames = { rent: 'NOTION_DB_RENT', tax: 'NOTION_DB_TAX', salary: 'NOTION_DB_SALARY' };
+        const out = [];
+        for (const k of keys) {
+          const c = dbConfig(k);
+          const item = { key: k, name: names[k], env: envNames[k] };
+          if (!c.id) {
+            item.ok = false;
+            item.error = '未設定環境變數 ' + envNames[k];
+          } else {
+            try {
+              const info = await notionFetch('/databases/' + c.id, { method: 'GET' });
+              item.ok = true;
+              item.title = (info.title || []).map(t => t.plain_text).join('') || '(無標題)';
+              item.props = Object.keys(info.properties || {});
+              item.titleProp = c.titleProp;
+              item.titlePropOk = item.props.indexOf(c.titleProp) !== -1;
+            } catch (err) {
+              item.ok = false;
+              item.error = err.status === 404
+                ? '找不到資料庫,請確認 ID 正確且已將資料庫「連接」到 integration'
+                : (err.message || '連線失敗');
+            }
+          }
+          out.push(item);
+        }
+        res.status(200).json({ tokenSet: !!process.env.NOTION_TOKEN, databases: out });
         return;
       }
       case 'schema': {
